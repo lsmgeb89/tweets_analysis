@@ -71,16 +71,15 @@ class TweetsStream:
 
 
 def main():
-    if len(sys.argv) != 2:
-        print("Usage: stream.py <hash_tag>", file=sys.stderr)
+    if len(sys.argv) != 3:
+        print("Usage:", sys.argv[0], "<server_port> <hash_tag>", file=sys.stderr)
         sys.exit(-1)
 
-    hash_tag = "#" + str(sys.argv[1])
-
     server = SocketServer()
-    conn = server.setup("localhost", 9001)
+    conn = server.setup("localhost", int(sys.argv[1]))
 
     stream = TweetsStream(conn)
+    hash_tag = "#" + str(sys.argv[2])
     stream.start(hash_tag)
 
 
