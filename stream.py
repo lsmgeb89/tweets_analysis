@@ -2,6 +2,7 @@ import googlemaps
 import json
 import os
 from pprint import pprint
+import re
 import socket
 import sys
 import tweepy
@@ -30,10 +31,31 @@ class TweetsListener(tweepy.StreamListener):
         self.g_maps = googlemaps.Client(os.environ.get("G_MAPS_API_KEY"))
 
     def on_status(self, status):
+        # only deal with english tweets
+        if status.lang is not None and status.lang != "en":
+            return
+
         msg_dict = {"message": None, "location": None, "timestamp": None}
 
         if status.text is not None:
-            msg_dict["message"] = status.text
+            # try to get full tweet
+            try:
+                text = status.extended_tweet["full_text"]
+            except AttributeError:
+                text = status.text
+
+            # remove emoji
+            emoji_pattern = re.compile("["
+                                        u"\U0001F600-\U0001F64F"
+                                        u"\U0001F300-\U0001F5FF"
+                                        u"\U0001F680-\U0001F6FF"
+                                        u"\U0001F1E0-\U0001F1FF"
+                                        "]+", flags=re.UNICODE)
+            no_emoji_str = emoji_pattern.sub(r'', text)
+
+            # remove url
+            url_pattern = re.compile(r'(http[s]://[\w./]+)*')
+            msg_dict["message"] = url_pattern.sub(r'', no_emoji_str)
 
         if status.user.location is not None:
             geocode_result = self.g_maps.geocode(status.user.location)
@@ -64,7 +86,7 @@ class TweetsStream:
                                         os.environ.get("T_CONSUMER_SECRET"))
         self.auth.set_access_token(os.environ.get("T_ACCESS_TOKEN"),
                                    os.environ.get("T_ACCESS_SECRET"))
-        self.stream = tweepy.Stream(self.auth, TweetsListener(conn))
+        self.stream = tweepy.Stream(auth=self.auth, listener=TweetsListener(conn), tweet_mode="extended")
 
     def start(self, hash_tag):
         self.stream.filter(track=[hash_tag])
