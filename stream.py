@@ -3,8 +3,10 @@ import json
 import os
 from pprint import pprint
 import re
+import signal
 import socket
 import sys
+import threading
 import tweepy
 
 
@@ -24,16 +26,24 @@ class SocketServer:
 
 
 class TweetsListener(tweepy.StreamListener):
+    stop = False
+    stop_lock = threading.Lock()
 
     def __init__(self, conn):
-        tweepy.StreamListener.__init__(self)
+        super(TweetsListener, self).__init__()
         self.conn = conn
         self.g_maps = googlemaps.Client(os.environ.get("G_MAPS_API_KEY"))
 
     def on_status(self, status):
+        with TweetsListener.stop_lock:
+            if TweetsListener.stop is True:
+                print("on_status returns false to stop streaming")
+                self.conn.close()
+                return False
+
         # only deal with english tweets
         if status.lang is not None and status.lang != "en":
-            return
+            return True
 
         msg_dict = {"message": None, "location": None, "timestamp": None}
 
@@ -71,12 +81,19 @@ class TweetsListener(tweepy.StreamListener):
 
         # need \n as termination char
         self.conn.send(json.dumps(msg_dict).encode("utf-8") + b"\n")
+        return True
 
     def on_error(self, status_code):
         if status_code == 420:
             return False
         else:
             print(status_code)
+
+    @staticmethod
+    def signal_handler(sig, frame):
+        print("Receive Ctrl-C and stop streaming:", file=sys.stderr)
+        with TweetsListener.stop_lock:
+            TweetsListener.stop = True
 
 
 class TweetsStream:
@@ -86,9 +103,11 @@ class TweetsStream:
                                         os.environ.get("T_CONSUMER_SECRET"))
         self.auth.set_access_token(os.environ.get("T_ACCESS_TOKEN"),
                                    os.environ.get("T_ACCESS_SECRET"))
-        self.stream = tweepy.Stream(auth=self.auth, listener=TweetsListener(conn), tweet_mode="extended")
+        self.listener = TweetsListener(conn)
+        self.stream = tweepy.Stream(auth=self.auth, listener=self.listener, tweet_mode="extended")
 
     def start(self, hash_tag):
+        signal.signal(signal.SIGINT, self.listener.signal_handler)
         self.stream.filter(track=[hash_tag])
 
 
