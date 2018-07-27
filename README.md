@@ -14,6 +14,10 @@
 * Semester: Spring 2018
 * Programming Language: Python 3
 
+## Check Preview
+
+![Preview][preview]
+
 ## Setup on Ubuntu
 
 ### Install Elasticsearch and Kibana
@@ -73,7 +77,7 @@
 ### Run Client
 
 * `spark-submit --jars <path/to/elasticsearch_hadoop_jar_file> spark.py <es_domain> <es_port> <server_port> <interval>`
-* i.e. `spark-submit --jars ${HOME}/frameworks/elasticsearch-hadoop-6.2.3/dist/elasticsearch-hadoop-6.2.3.jar spark.py localhost 9200 9001 10`
+* i.e. `spark-submit --jars ${HOME}/frameworks/elasticsearch-hadoop-6.2.3/dist/elasticsearch-hadoop-6.2.3.jar spark.py localhost 9200 9001 5`
 
 ### Check Documents in the Index (`tweets`) and Type (`tweet`)
 
@@ -82,6 +86,10 @@
 ### Delete Index (`tweets`)
 
 * `curl -XDELETE 'localhost:9200/tweets'`
+
+## Run Script
+
+* Check `run_tweets_analysis.sh` in my gist
 
 ## Reference
 
@@ -113,6 +121,7 @@
 
 * [Kibana Document][kibana_doc]
 
+[preview]: preview.gif "Preview"
 [khan]: https://cs.utdallas.edu/people/faculty/khan-latifur/
 [spark_stream]: https://spark.apache.org/streaming/
 [es]: https://www.elastic.co/
